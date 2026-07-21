@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "4fe9f6ed-1e6e-4ffb-a96e-5094fcc28234",
+  "packageName": "com.fecitalia.reportsettimanale",
+  "developer": {
+    "name": "Fec Italia",
+    "websiteUrl": "https://fecpos.it",
+    "privacyUrl": "https://fecpos.it/privacy",
+    "termsOfUseUrl": "https://fecpos.it/terms"
+  },
+  "name": {
+    "short": "Report Settimanale",
+    "full": "Report Settimanale Visite Clienti"
+  },
+  "description": {
+    "short": "Registra le visite clienti della settimana",
+    "full": "Report Settimanale permette ai commerciali di registrare i clienti visitati durante la settimana direttamente da Microsoft Teams."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#1a56db",
+  "staticTabs": [
+    {
+      "entityId": "reportsettimanale",
+      "name": "Report Settimanale",
+      "contentUrl": "https://report.fecitalia.it/",
+      "websiteUrl": "https://report.fecitalia.it/",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["report.fecitalia.it"],
+  "webApplicationInfo": {
+    "id": "6b567373-bf89-4741-8cd8-bfefe7232195",
+    "resource": "api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195"
+  }
+}

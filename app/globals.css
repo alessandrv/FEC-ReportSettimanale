@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+@import '@heroui/styles';
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+}
+
+/*
+ * Brand override on top of the HeroUI default theme.
+ * Only the accent is customized (Fec Italia blue, same as the Teams
+ * app accentColor); every other token keeps the HeroUI default so
+ * components render with their intended palette.
+ */
+:root {
+  --accent: #1a56db;
+  --accent-foreground: var(--snow);
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+}
