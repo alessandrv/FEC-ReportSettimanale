@@ -51,29 +51,56 @@ api://report.fecitalia.it/<app-client-id>
 - SSO app (`webApplicationInfo.id`): `6b567373-bf89-4741-8cd8-bfefe7232195` — the
   **reused RimborsoSpese Entra app registration** client id.
 - SSO resource (`webApplicationInfo.resource`):
-  `api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195`
+  `api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195`.
 
-### Steps to make SSO work on report.fecitalia.it (reusing the RimborsoSpese app)
+### The resource host MUST match the tab origin
 
-The RimborsoSpese Entra app currently exposes `api://rimborso.fecitalia.it/6b567373…`.
-To also serve `report.fecitalia.it`, add a second identifier on the same app:
+Teams validates that the host in `webApplicationInfo.resource` matches the tab's iframe
+origin. If they differ, `authentication.getAuthToken()` fails with:
 
-1. Entra ID → App registrations → the RimborsoSpese app (`6b567373-…`).
-2. Expose an API → add a second **Application ID URI**:
-   `api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195`
-   (an app can hold multiple identifier URIs). Keep the existing `access_as_user` scope.
-3. Confirm the Teams client applications are pre-authorized on that scope:
-   - `1fec8e78-bce4-4aaf-ab1b-5451cc387264` (Teams mobile/desktop)
-   - `5e3ce6c0-2b1f-4285-8d4b-75ee78787346` (Teams web)
-4. Add the Web redirect URI for browser login:
-   `https://report.fecitalia.it/api/auth/callback/microsoft-entra-id`
-   (plus `http://localhost:3000/api/auth/callback/microsoft-entra-id` for local dev).
-5. Upload `teams-app/manifest.zip` in Teams (Apps → Manage your apps → Upload an app),
-   or publish it tenant-wide via the Teams admin center.
+```
+App resource defined in manifest and iframe origin do not match
+```
 
-If you later prefer a dedicated app registration instead of reusing RimborsoSpese's,
-create it, then swap `webApplicationInfo.id`/`resource` (and the `.env` client id/secret)
-to the new client id and rebuild the zip:
+Because the tab is served at `report.fecitalia.it`, the resource **must** be
+`api://report.fecitalia.it/6b567373…`. Reusing the existing `api://rimborso.fecitalia.it/…`
+identifier does NOT work — Teams rejects the origin mismatch (learned the hard way).
+
+### Required Entra change (silent SSO cannot work without it)
+
+The shared app must expose `api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195`
+as an Application ID URI, in addition to its existing rimborso one. An app supports
+multiple identifier URIs, and adding this one does **not** affect RimborsoSpese.
+
+If the "Expose an API" screen only shows a single Application ID URI field (older portal)
+and won't let you add a second, add it via the **app manifest JSON editor** instead:
+
+1. Entra ID → App registrations → the app (`6b567373-…`) → **Manifest**.
+2. Find the `identifierUris` array and add the entry:
+   ```json
+   "identifierUris": [
+     "api://rimborso.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195",
+     "api://report.fecitalia.it/6b567373-bf89-4741-8cd8-bfefe7232195"
+   ]
+   ```
+3. Save. The existing `access_as_user` scope and pre-authorized Teams clients still apply.
+
+This requires **edit rights (Owner) on the app registration**. If you don't have them,
+this step must be done by whoever owns the RimborsoSpese app / an Entra admin — there is
+no client-side workaround.
+
+### Remaining steps to run in Teams
+
+1. Serve the app at `https://report.fecitalia.it` (the Cloudflare tunnel), matching
+   `validDomains`.
+2. Set `AUTH_URL=https://report.fecitalia.it` in the `.env` on the machine running the
+   app (host auto-detection is unreliable behind the tunnel), and restart the process.
+3. Add the Application ID URI above (silent SSO). For the interactive browser-login
+   fallback also add a Web redirect URI: `https://report.fecitalia.it/api/auth/callback/microsoft-entra-id`.
+4. Upload `teams-app/manifest.zip` in Teams (Apps → Manage your apps → Upload a custom
+   app); remove the previously installed version first. Bump `version` on each re-upload.
+
+To rebuild the zip after editing the manifest:
 
 ```bash
 cd teams-app && zip -j -X manifest.zip manifest.json color.png outline.png
