@@ -16,3 +16,6 @@ next.user-config.*
 node_modules
 .next/
 .DS_Store
+# Tooling / build artifacts
+.serena/
+tsconfig.tsbuildinfo

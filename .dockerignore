@@ -1,0 +1,23 @@
+node_modules
+.next
+.git
+.gitignore
+
+# Secrets are injected at runtime (env_file / -e), never baked into the image
+.env
+.env.*
+!.env.example
+
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+.vscode
+.claude
+.serena
+teams-app
+docs
+*.md
+!README.md
+npm-debug.log*
+tsconfig.tsbuildinfo

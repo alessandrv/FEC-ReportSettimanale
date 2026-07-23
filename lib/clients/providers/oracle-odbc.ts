@@ -4,30 +4,31 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@/lib/types'
 import { ClientDirectory } from '@/lib/clients/types'
+import { cachedClients } from '@/lib/clients/cache'
+import { buildListSql, cleanName, getOwner } from '@/lib/clients/sql'
 
 /*
- * Skyline (Oracle 11g) is reachable only through the 32-bit Oracle ODBC driver.
- * Node is 64-bit and cannot load a 32-bit library in-process, so — exactly like
- * the Skyline MCP server — we run the query in a 32-bit PowerShell child process
- * that talks to the DB over ODBC and returns JSON on stdout.
+ * WINDOWS HOST transport.
  *
- * The full client directory (~1.4k rows, ~70 KB) is fetched in one query and
- * cached in memory; the UI filters it client-side. This avoids paying the
- * process-spawn cost (~2 s) on every keystroke or every visit added.
+ * Skyline (Oracle 11g) is reachable on the Windows host only through the 32-bit
+ * Oracle ODBC driver. Node is 64-bit and cannot load a 32-bit library in-process,
+ * so — exactly like the Skyline MCP server — the query runs in a 32-bit PowerShell
+ * child process that talks to the DB over ODBC and returns JSON on stdout.
+ *
+ * In the Linux container this is not used: see providers/oracle-node.ts, which
+ * uses the native driver against a 64-bit Instant Client.
  */
 
 const DEFAULT_PS32 =
   'C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe'
 const DEFAULT_DRIVER = 'Oracle in OraClient11g_home1_32bit'
 const TIMEOUT_MS = 30_000
-const CACHE_TTL_MS = Number(process.env.ORACLE_CLIENTS_TTL_MS) || 600_000
 
 interface SkylineConfig {
   driver: string
   dbq: string
   user: string
   password: string
-  owner: string
   powershell: string
 }
 
@@ -46,31 +47,13 @@ function getConfig(): SkylineConfig {
     user,
     password,
     dbq,
-    // Sanitized — interpolated into SQL as a schema identifier (cannot be bound).
-    owner: (process.env.ORACLE_OWNER ?? '').replace(/[^A-Za-z0-9_]/g, ''),
     driver: process.env.ORACLE_ODBC_DRIVER?.trim() || DEFAULT_DRIVER,
     powershell: process.env.ORACLE_POWERSHELL_32?.trim() || DEFAULT_PS32,
   }
 }
 
-function buildListSql(owner: string): string {
-  const prefix = owner ? `${owner}.` : ''
-
-  return `
-    SELECT DISTINCT
-      TRIM(a.MASTRO) || '-' || TRIM(a.PARTITARIO) AS id,
-      TRIM(a.DESCRIZIONE_1) ||
-        CASE WHEN TRIM(a.DESCRIZIONE_2) IS NOT NULL
-             THEN ' ' || TRIM(a.DESCRIZIONE_2) ELSE '' END AS ragione_sociale
-    FROM ${prefix}ANAGRAFICO_CONTI a
-    JOIN ${prefix}CONTI_CLIENTI c
-      ON c.MASTRO = a.MASTRO AND c.PARTITARIO = a.PARTITARIO
-    ORDER BY ragione_sociale
-  `.trim()
-}
-
-// PowerShell script (runs in the 32-bit host, invoked with -File). The SQL is
-// passed via an env var; it contains no user input (the whole list is fetched).
+// Runs in the 32-bit host, invoked with -File. All inputs arrive via env vars,
+// so nothing is interpolated into the script or the shell command line.
 const PS_SCRIPT = `$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 try {
@@ -100,8 +83,8 @@ try {
   exit 1
 }`
 
-// Materialize the script to a temp .ps1 once per process. Piping it via stdin
-// (`-Command -`) is unreliable for multi-line scripts, so we invoke with -File.
+// Piping the script via stdin (`-Command -`) is unreliable for multi-line
+// scripts, so materialize it to a temp .ps1 once and invoke with -File.
 let scriptPathPromise: Promise<string> | null = null
 function getScriptPath(): Promise<string> {
   if (!scriptPathPromise) {
@@ -169,14 +152,9 @@ async function runQuery(config: SkylineConfig, sql: string): Promise<string> {
   })
 }
 
-// Strip ERP display noise: trailing "####" padding and surrounding whitespace.
-function cleanName(name: string): string {
-  return name.replace(/[#\s]+$/g, '').trim()
-}
-
 async function fetchAllClients(): Promise<Client[]> {
   const config = getConfig()
-  const output = await runQuery(config, buildListSql(config.owner))
+  const output = await runQuery(config, buildListSql(getOwner()))
 
   let rows: Array<{ id?: string; name?: string }>
   try {
@@ -190,32 +168,8 @@ async function fetchAllClients(): Promise<Client[]> {
     .filter((client) => client.name.length > 0)
 }
 
-interface CacheEntry {
-  clients: Client[]
-  expiresAt: number
-}
-
-let cache: CacheEntry | null = null
-let inflight: Promise<Client[]> | null = null
-
-export const oracleClientDirectory: ClientDirectory = {
-  async listClients(): Promise<Client[]> {
-    if (cache && cache.expiresAt > Date.now()) {
-      return cache.clients
-    }
-
-    // Single-flight: concurrent callers share one process spawn.
-    if (!inflight) {
-      inflight = fetchAllClients()
-        .then((clients) => {
-          cache = { clients, expiresAt: Date.now() + CACHE_TTL_MS }
-          return clients
-        })
-        .finally(() => {
-          inflight = null
-        })
-    }
-
-    return inflight
+export const oracleOdbcClientDirectory: ClientDirectory = {
+  listClients(): Promise<Client[]> {
+    return cachedClients(fetchAllClients)
   },
 }

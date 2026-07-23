@@ -1,0 +1,22 @@
+services:
+  report-settimanale:
+    build: .
+    image: report-settimanale:latest
+    container_name: report-settimanale
+    restart: unless-stopped
+    # Host 3009 keeps the same port the app used when run directly, so the
+    # Cloudflare tunnel config does not need to change.
+    ports:
+      - "3009:3000"
+    # The Oracle host is only resolvable on the LAN via mDNS (SRVSKY.local), which
+    # containers do not speak — so map the short name used in
+    # ORACLE_CONNECT_STRING to its address. Update the IP if the server moves.
+    extra_hosts:
+      - "SRVSKY:172.16.16.24"
+    # Secrets stay out of the image; they are read at container start.
+    env_file:
+      - .env
+    environment:
+      # Linux container -> native Oracle driver (the Windows ODBC/PowerShell
+      # transport cannot work here).
+      CLIENTS_DRIVER: oracledb

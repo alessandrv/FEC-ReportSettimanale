@@ -27,6 +27,18 @@ npm run dev
 Con `REPORTS_BACKEND_PROVIDER=memory` (default) l'app funziona subito: clienti mock e
 visite in memoria. Serve comunque un login Microsoft (o Teams SSO) per entrare.
 
+## Docker
+
+```bash
+docker compose build && docker compose up -d
+```
+
+Il container espone la porta 3009 sull'host (come l'esecuzione diretta, quindi il
+tunnel Cloudflare resta invariato) e legge le variabili da `.env` a runtime.
+Nel container il direttorio clienti usa il driver Oracle nativo (Instant Client
+64-bit) invece del transport PowerShell/ODBC usato su Windows — vedi
+[docs/docker.md](docs/docker.md).
+
 ## Produzione
 
 - `npm run build && npm run start` (porta 3009) oppure `pm2 start ecosystem.config.cjs`.
