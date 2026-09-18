@@ -7,12 +7,20 @@ import { WeekRef, formatWeekRange } from '@/lib/week'
 interface WeekNavigatorProps {
   week: WeekRef
   onShift: (offset: number) => void
-  /** Disable navigating into future weeks (default true) */
-  allowFuture?: boolean
   isCurrentWeek: boolean
+  /** true when the shown week comes after the current one */
+  isFutureWeek?: boolean
+  /** false when the last selectable week is already shown */
+  canGoForward?: boolean
 }
 
-export function WeekNavigator({ week, onShift, allowFuture = false, isCurrentWeek }: WeekNavigatorProps) {
+export function WeekNavigator({
+  week,
+  onShift,
+  isCurrentWeek,
+  isFutureWeek = false,
+  canGoForward = true,
+}: WeekNavigatorProps) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-3 py-2">
       <Button
@@ -31,6 +39,11 @@ export function WeekNavigator({ week, onShift, allowFuture = false, isCurrentWee
               corrente
             </Chip>
           )}
+          {isFutureWeek && (
+            <Chip size="sm" color="warning" variant="soft">
+              futura
+            </Chip>
+          )}
         </p>
         <p className="text-xs text-muted">{formatWeekRange(week)}</p>
       </div>
@@ -38,7 +51,7 @@ export function WeekNavigator({ week, onShift, allowFuture = false, isCurrentWee
         variant="ghost"
         isIconOnly
         aria-label="Settimana successiva"
-        isDisabled={!allowFuture && isCurrentWeek}
+        isDisabled={!canGoForward}
         onPress={() => onShift(1)}
       >
         <ChevronRight className="h-5 w-5" />

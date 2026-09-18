@@ -8,7 +8,7 @@ import { ArrowLeft, ShieldAlert } from 'lucide-react'
 import { AdminPanel } from '@/components/admin-panel'
 import { TeamsSso } from '@/components/teams-sso'
 import { WeekNavigator } from '@/components/week-navigator'
-import { currentWeek, shiftWeek } from '@/lib/week'
+import { MAX_FUTURE_WEEKS, clampWeekOffset, currentWeek, shiftWeek } from '@/lib/week'
 
 export default function AdminPage() {
   const { data: session, status } = useSession()
@@ -75,8 +75,9 @@ export default function AdminPage() {
         <WeekNavigator
           week={week}
           isCurrentWeek={weekOffset === 0}
-          allowFuture={false}
-          onShift={(offset) => setWeekOffset((value) => Math.min(value + offset, 0))}
+          isFutureWeek={weekOffset > 0}
+          canGoForward={weekOffset < MAX_FUTURE_WEEKS}
+          onShift={(offset) => setWeekOffset((value) => clampWeekOffset(value + offset))}
         />
 
         <AdminPanel week={week} />

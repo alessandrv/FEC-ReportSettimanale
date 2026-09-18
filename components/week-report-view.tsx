@@ -51,7 +51,12 @@ export function WeekReportView({
           <Card.Title>Aggiungi visita</Card.Title>
         </Card.Header>
         <Card.Content>
-          <QuickAddVisit week={week} onAdd={onAdd} isDisabled={submitting} />
+          <QuickAddVisit
+            key={`${week.year}-${week.week}`}
+            week={week}
+            onAdd={onAdd}
+            isDisabled={submitting}
+          />
         </Card.Content>
       </Card>
 

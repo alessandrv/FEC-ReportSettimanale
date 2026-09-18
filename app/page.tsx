@@ -8,7 +8,7 @@ import { Building2, ClipboardList, LogOut } from 'lucide-react'
 import { TeamsSso } from '@/components/teams-sso'
 import { WeekNavigator } from '@/components/week-navigator'
 import { WeekReport } from '@/components/week-report'
-import { currentWeek, shiftWeek } from '@/lib/week'
+import { MAX_FUTURE_WEEKS, clampWeekOffset, currentWeek, shiftWeek } from '@/lib/week'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -89,8 +89,9 @@ export default function Home() {
         <WeekNavigator
           week={week}
           isCurrentWeek={weekOffset === 0}
-          allowFuture={false}
-          onShift={(offset) => setWeekOffset((value) => Math.min(value + offset, 0))}
+          isFutureWeek={weekOffset > 0}
+          canGoForward={weekOffset < MAX_FUTURE_WEEKS}
+          onShift={(offset) => setWeekOffset((value) => clampWeekOffset(value + offset))}
         />
 
         <WeekReport week={week} />

@@ -40,6 +40,17 @@ export function shiftWeek(week: WeekRef, offset: number): WeekRef {
   return weekFromDate(addWeeks(week.start, offset))
 }
 
+/**
+ * How many weeks after the current one can be opened for data entry:
+ * visits are often planned ahead, so the coming weeks are editable too.
+ */
+export const MAX_FUTURE_WEEKS = 8
+
+/** Keep a week offset inside the selectable range (the past is unlimited). */
+export function clampWeekOffset(offset: number): number {
+  return Math.min(offset, MAX_FUTURE_WEEKS)
+}
+
 export function weekOfIsoDate(isoDate: string): { year: number; week: number } {
   const parsed = parseISO(isoDate)
 
